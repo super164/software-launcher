@@ -12,6 +12,7 @@ import (
 
 	"github.com/lxn/walk"
 	. "github.com/lxn/walk/declarative"
+	"golang.org/x/sys/windows/registry"
 )
 
 // AppInfo 单条软件记录：名称 + 完整路径。
@@ -20,10 +21,13 @@ type AppInfo struct {
 	Path string `json:"path"`
 }
 
-// Config 落盘结构：拆分为「手动区」与「自动抓取区」两块，互不污染。
+// Config 落盘结构：拆分为「手动区」与「自动抓取区」两块，互不污染；
+// AutoStart/AutoRestore 为两个用户可选开关（开机自启 / 登录后自动恢复）。
 type Config struct {
-	Manual   []AppInfo `json:"manual"`
-	Captured []AppInfo `json:"captured"`
+	Manual      []AppInfo `json:"manual"`
+	Captured    []AppInfo `json:"captured"`
+	AutoStart   bool      `json:"auto_start"`
+	AutoRestore bool      `json:"auto_restore"`
 }
 
 var (
@@ -32,6 +36,13 @@ var (
 	mainWindow   *walk.MainWindow
 	manualList   *walk.ListBox // 手动区列表控件
 	capturedList *walk.ListBox // 自动区列表控件
+
+	// 开机自启 / 自动恢复两个开关（用户自选，持久化在 apps.json）
+	autoStartEnabled   bool
+	autoRestoreEnabled bool
+	autoStartChk       *walk.CheckBox
+	autoRestoreChk     *walk.CheckBox
+	syncingToggles     bool // 防止程序化 SetChecked 触发 OnCheckedChanged 造成递归
 )
 
 // getConfigPath 返回配置文件位置：%APPDATA%/Local/AppStarter/apps.json
@@ -85,27 +96,106 @@ func loadConfig() {
 	}
 	manualApps = cfg.Manual
 	capturedApps = cfg.Captured
+	autoStartEnabled = cfg.AutoStart
+	autoRestoreEnabled = cfg.AutoRestore
 }
 
-// saveConfig 把两块列表写入 apps.json（手动区与自动区都持久化，
-// 这样第二天开机也能凭自动区内容一键复活）。
-func saveConfig() {
+// persistConfig 静默写盘（含两个开关状态），供开关切换等自动场景使用，不弹窗。
+func persistConfig() error {
 	dir := filepath.Dir(getConfigPath())
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		walk.MsgBox(mainWindow, "错误", "创建目录失败: "+err.Error(), walk.MsgBoxIconError)
-		return
+		return err
 	}
-	cfg := Config{Manual: manualApps, Captured: capturedApps}
+	cfg := Config{Manual: manualApps, Captured: capturedApps, AutoStart: autoStartEnabled, AutoRestore: autoRestoreEnabled}
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
-		walk.MsgBox(mainWindow, "错误", "序列化失败: "+err.Error(), walk.MsgBoxIconError)
-		return
+		return err
 	}
-	if err := os.WriteFile(getConfigPath(), data, 0644); err != nil {
-		walk.MsgBox(mainWindow, "错误", "写入文件失败: "+err.Error(), walk.MsgBoxIconError)
+	return os.WriteFile(getConfigPath(), data, 0644)
+}
+
+// saveConfig 手动「保存列表」按钮：写盘并弹成功提示。
+func saveConfig() {
+	if err := persistConfig(); err != nil {
+		walk.MsgBox(mainWindow, "错误", "保存失败: "+err.Error(), walk.MsgBoxIconError)
 		return
 	}
 	walk.MsgBox(mainWindow, "成功", "已保存！\n位置: "+getConfigPath(), walk.MsgBoxIconInformation)
+}
+
+// ============ 开机自启（注册表 HKCU Run） ============
+
+const (
+	runKeyName = `Software\Microsoft\Windows\CurrentVersion\Run`
+	runValue   = "AppStarter"
+)
+
+// setAutoStart 写入或删除 HKCU 启动项。路径含空格时必须加引号，否则 Windows 无法解析。
+func setAutoStart(enabled bool) error {
+	k, err := registry.OpenKey(registry.CURRENT_USER, runKeyName, registry.SET_VALUE|registry.QUERY_VALUE)
+	if err != nil {
+		return fmt.Errorf("打开注册表启动项失败: %v", err)
+	}
+	defer k.Close()
+	if !enabled {
+		// 取消自启：值不存在时忽略错误（重复取消无害）
+		_ = k.DeleteValue(runValue)
+		return nil
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("获取程序路径失败: %v", err)
+	}
+	if err := k.SetStringValue(runValue, `"`+exe+`"`); err != nil {
+		return fmt.Errorf("写入启动项失败: %v", err)
+	}
+	return nil
+}
+
+// autoStartRegistered 读取注册表当前是否已注册自启（启动时与配置对齐用）。
+func autoStartRegistered() bool {
+	k, err := registry.OpenKey(registry.CURRENT_USER, runKeyName, registry.QUERY_VALUE)
+	if err != nil {
+		return false
+	}
+	defer k.Close()
+	_, _, err = k.GetStringValue(runValue)
+	return err == nil
+}
+
+// syncAutoStart 启动时让注册表与配置一致：以配置为准修正注册表，
+// 避免用户曾手动在任务管理器里关掉自启、或注册表被第三方改动后状态失真。
+func syncAutoStart() {
+	if autoStartEnabled == autoStartRegistered() {
+		return
+	}
+	_ = setAutoStart(autoStartEnabled)
+}
+
+// onAutoStartChanged 用户勾选/取消「开机自启」。
+func onAutoStartChanged() {
+	if syncingToggles {
+		return
+	}
+	autoStartEnabled = autoStartChk.Checked()
+	if err := setAutoStart(autoStartEnabled); err != nil {
+		// 写注册表失败：回滚勾选状态并提示
+		syncingToggles = true
+		autoStartChk.SetChecked(!autoStartEnabled)
+		syncingToggles = false
+		walk.MsgBox(mainWindow, "错误", err.Error(), walk.MsgBoxIconError)
+		return
+	}
+	_ = persistConfig()
+}
+
+// onAutoRestoreChanged 用户勾选/取消「开机后自动恢复上次软件」。
+func onAutoRestoreChanged() {
+	if syncingToggles {
+		return
+	}
+	autoRestoreEnabled = autoRestoreChk.Checked()
+	_ = persistConfig()
 }
 
 // addPath 把一条路径加入手动区（去重）。返回是否真正新增。
@@ -178,26 +268,56 @@ func launchAll() {
 		walk.MsgBox(mainWindow, "提示", "两个列表都为空，请先添加或抓取软件", walk.MsgBoxIconInformation)
 		return
 	}
-	go func() {
-		var failed []string
-		for i, a := range all {
-			if err := launchApp(a); err != nil {
-				failed = append(failed, fmt.Sprintf("• %s: %v", a.Name, err))
-			}
-			if i < len(all)-1 {
-				time.Sleep(time.Second)
-			}
+	go runAll(all, false)
+}
+
+// runAll 依次启动列表（1 秒错峰）。silent=true 时不弹成功提示（开机自动恢复场景），
+// 仅在有启动失败时提示一次。
+func runAll(all []AppInfo, silent bool) {
+	var failed []string
+	for i, a := range all {
+		if err := launchApp(a); err != nil {
+			failed = append(failed, fmt.Sprintf("• %s: %v", a.Name, err))
 		}
-		success := len(all) - len(failed)
-		mainWindow.Synchronize(func() {
-			if len(failed) == 0 {
-				walk.MsgBox(mainWindow, "启动结果", fmt.Sprintf("已按序启动完成！\n成功: %d", success), walk.MsgBoxIconInformation)
-			} else {
-				walk.MsgBox(mainWindow, "启动结果",
-					fmt.Sprintf("成功: %d\n失败: %d\n\n失败明细:\n%s", success, len(failed), strings.Join(failed, "\n")),
+		if i < len(all)-1 {
+			time.Sleep(time.Second)
+		}
+	}
+	success := len(all) - len(failed)
+	if silent {
+		if len(failed) > 0 {
+			mainWindow.Synchronize(func() {
+				walk.MsgBox(mainWindow, "自动恢复",
+					fmt.Sprintf("已自动恢复 %d 个软件，其中 %d 个启动失败：\n%s", success, len(failed), strings.Join(failed, "\n")),
 					walk.MsgBoxIconWarning)
-			}
-		})
+			})
+		}
+		return
+	}
+	mainWindow.Synchronize(func() {
+		if len(failed) == 0 {
+			walk.MsgBox(mainWindow, "启动结果", fmt.Sprintf("已按序启动完成！\n成功: %d", success), walk.MsgBoxIconInformation)
+		} else {
+			walk.MsgBox(mainWindow, "启动结果",
+				fmt.Sprintf("成功: %d\n失败: %d\n\n失败明细:\n%s", success, len(failed), strings.Join(failed, "\n")),
+				walk.MsgBoxIconWarning)
+		}
+	})
+}
+
+// maybeAutoRestore 登录后自动恢复：用户开启「开机后自动恢复上次软件」时，
+// 等系统就绪（延迟 8 秒）再静默启动已保存的列表，实现"开机即就绪"。
+func maybeAutoRestore() {
+	if !autoRestoreEnabled {
+		return
+	}
+	all := append(append([]AppInfo{}, manualApps...), capturedApps...)
+	if len(all) == 0 {
+		return
+	}
+	go func() {
+		time.Sleep(8 * time.Second)
+		runAll(all, true)
 	}()
 }
 
@@ -361,14 +481,16 @@ func handleDropFiles(files []string) {
 
 func main() {
 	loadConfig()
+	syncAutoStart()    // 让注册表与配置里的自启状态对齐
+	maybeAutoRestore() // 若开启自动恢复，登录后延迟 8 秒静默启动保存的列表
 
 	// 声明式 UI：walk 负责消息循环、布局与 DPI，原版"忙等占满 CPU"和"按钮被边框裁切"两个问题结构性消失。
 	// 双 ListBox 布局：上=手动区，下=自动抓取区，各自带标题标签。
 	_, err := (MainWindow{
 		AssignTo: &mainWindow,
 		Title:    "软件启动器",
-		Size:     Size{Width: 600, Height: 560},
-		MinSize:  Size{Width: 600, Height: 560},
+		Size:     Size{Width: 600, Height: 600},
+		MinSize:  Size{Width: 600, Height: 580},
 		Layout:   VBox{},
 		// walk 会自动启用窗口接受拖拽并回调此函数，传入干净的文件路径切片。
 		OnDropFiles: handleDropFiles,
@@ -394,6 +516,27 @@ func main() {
 					PushButton{Text: "抓取运行软件", OnClicked: captureRunning},
 					PushButton{Text: "启动选中", OnClicked: launchSelected},
 					PushButton{Text: "启动所有软件", OnClicked: launchAll},
+					HSpacer{},
+				},
+			},
+			Composite{
+				Layout: HBox{
+					Margins: Margins{Left: 10, Top: 0, Right: 10, Bottom: 5},
+					Spacing: 10,
+				},
+				Children: []Widget{
+					CheckBox{
+						Text:             "开机自启",
+						AssignTo:         &autoStartChk,
+						Checked:          autoStartEnabled,
+						OnCheckedChanged: onAutoStartChanged,
+					},
+					CheckBox{
+						Text:             "开机后自动恢复上次软件",
+						AssignTo:         &autoRestoreChk,
+						Checked:          autoRestoreEnabled,
+						OnCheckedChanged: onAutoRestoreChanged,
+					},
 					HSpacer{},
 				},
 			},
