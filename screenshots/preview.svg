@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 560" font-family="Segoe UI, Microsoft YaHei, sans-serif">
+  <!-- 窗口 -->
+  <rect x="0" y="0" width="600" height="560" rx="6" fill="#f0f0f0" stroke="#b0b0b0"/>
+  <!-- 标题栏 -->
+  <rect x="1" y="1" width="598" height="30" rx="6" fill="#3a7bd5"/>
+  <text x="14" y="20" fill="#ffffff" font-size="13" font-weight="600">软件启动器</text>
+  <text x="582" y="21" fill="#ffffff" font-size="15" text-anchor="end">×</text>
+
+  <!-- 第一行按钮 -->
+  <rect x="10" y="44" width="92" height="28" rx="3" fill="#ffffff" stroke="#b0b0b0"/>
+  <text x="56" y="62" text-anchor="middle" font-size="12" fill="#222222">添加软件</text>
+  <rect x="112" y="44" width="92" height="28" rx="3" fill="#ffffff" stroke="#b0b0b0"/>
+  <text x="158" y="62" text-anchor="middle" font-size="12" fill="#222222">删除选中</text>
+  <rect x="214" y="44" width="92" height="28" rx="3" fill="#ffffff" stroke="#b0b0b0"/>
+  <text x="260" y="62" text-anchor="middle" font-size="12" fill="#222222">保存列表</text>
+
+  <!-- 第二行按钮 -->
+  <rect x="10" y="80" width="112" height="28" rx="3" fill="#ffffff" stroke="#b0b0b0"/>
+  <text x="66" y="98" text-anchor="middle" font-size="12" fill="#222222">抓取运行软件</text>
+  <rect x="132" y="80" width="92" height="28" rx="3" fill="#ffffff" stroke="#b0b0b0"/>
+  <text x="178" y="98" text-anchor="middle" font-size="12" fill="#222222">启动选中</text>
+  <rect x="234" y="80" width="112" height="28" rx="3" fill="#ffffff" stroke="#b0b0b0"/>
+  <text x="290" y="98" text-anchor="middle" font-size="12" fill="#222222">启动所有软件</text>
+
+  <!-- 手动区标签 -->
+  <text x="10" y="133" font-size="12" fill="#444444">手动添加（持久保存，不会被抓取覆盖）</text>
+  <rect x="10" y="142" width="580" height="170" rx="3" fill="#ffffff" stroke="#b0b0b0"/>
+  <text x="18" y="168" font-size="12" fill="#333333">WeChat.exe  -  C:\Program Files\Tencent\WeChat\WeChat.exe</text>
+  <text x="18" y="194" font-size="12" fill="#333333">chrome.exe  -  C:\Program Files\Google\Chrome\Application\chrome.exe</text>
+  <text x="18" y="220" font-size="12" fill="#333333">Code.exe  -  C:\Users\...\AppData\Local\Programs\Microsoft VS Code\Code.exe</text>
+  <text x="18" y="246" font-size="12" fill="#333333">Typora.exe  -  C:\Program Files\Typora\Typora.exe</text>
+
+  <!-- 自动区标签 -->
+  <text x="10" y="343" font-size="12" fill="#444444">自动抓取（当前运行，每次抓取自动刷新；与手动区去重）</text>
+  <rect x="10" y="352" width="580" height="170" rx="3" fill="#ffffff" stroke="#b0b0b0"/>
+  <text x="18" y="378" font-size="12" fill="#333333">QQ.exe  -  C:\Program Files\Tencent\QQ\QQ.exe</text>
+  <text x="18" y="404" font-size="12" fill="#333333">DingTalk.exe  -  C:\Program Files\DingTalk\DingTalk.exe</text>
+  <text x="18" y="430" font-size="12" fill="#333333">Spotify.exe  -  C:\Users\...\AppData\Roaming\Spotify\Spotify.exe</text>
+</svg>

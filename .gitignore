@@ -1,0 +1,26 @@
+# ---- 编译产物（不纳入仓库，二进制走 GitHub Releases）----
+AppStarter.exe
+*.exe
+*.syso
+
+# ---- 临时 / 备份 / 快捷方式 ----
+*.bak
+*.lnk
+*.old
+*.tmp
+
+# ---- 日志 ----
+log/
+
+# ---- 图标资源（真实二进制不入库；.ico 改用 logo.ico.b64 文本，CI 用 certutil 还原）----
+*.ico
+assets/logo.png
+
+# ---- 编辑器 / 系统 ----
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# ---- 项目内部记忆（不入库）----
+.workbuddy/
