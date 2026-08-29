@@ -1,39 +1,168 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 560" font-family="Segoe UI, Microsoft YaHei, sans-serif">
-  <!-- 窗口 -->
-  <rect x="0" y="0" width="600" height="560" rx="6" fill="#f0f0f0" stroke="#b0b0b0"/>
-  <!-- 标题栏 -->
-  <rect x="1" y="1" width="598" height="30" rx="6" fill="#3a7bd5"/>
-  <text x="14" y="20" fill="#ffffff" font-size="13" font-weight="600">软件启动器</text>
-  <text x="582" y="21" fill="#ffffff" font-size="15" text-anchor="end">×</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" font-family="Segoe UI, Microsoft YaHei, sans-serif">
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+    <linearGradient id="i1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4f9cf9"/><stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="i2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f87171"/><stop offset="100%" stop-color="#dc2626"/>
+    </linearGradient>
+    <linearGradient id="i3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#34d399"/><stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="i4" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <linearGradient id="i5" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="i6" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+  </defs>
 
-  <!-- 第一行按钮 -->
-  <rect x="10" y="44" width="92" height="28" rx="3" fill="#ffffff" stroke="#b0b0b0"/>
-  <text x="56" y="62" text-anchor="middle" font-size="12" fill="#222222">添加软件</text>
-  <rect x="112" y="44" width="92" height="28" rx="3" fill="#ffffff" stroke="#b0b0b0"/>
-  <text x="158" y="62" text-anchor="middle" font-size="12" fill="#222222">删除选中</text>
-  <rect x="214" y="44" width="92" height="28" rx="3" fill="#ffffff" stroke="#b0b0b0"/>
-  <text x="260" y="62" text-anchor="middle" font-size="12" fill="#222222">保存列表</text>
+  <!-- 窗口背景 -->
+  <rect width="900" height="600" rx="8" fill="#f4f5f7" stroke="#c9ced6"/>
 
-  <!-- 第二行按钮 -->
-  <rect x="10" y="80" width="112" height="28" rx="3" fill="#ffffff" stroke="#b0b0b0"/>
-  <text x="66" y="98" text-anchor="middle" font-size="12" fill="#222222">抓取运行软件</text>
-  <rect x="132" y="80" width="92" height="28" rx="3" fill="#ffffff" stroke="#b0b0b0"/>
-  <text x="178" y="98" text-anchor="middle" font-size="12" fill="#222222">启动选中</text>
-  <rect x="234" y="80" width="112" height="28" rx="3" fill="#ffffff" stroke="#b0b0b0"/>
-  <text x="290" y="98" text-anchor="middle" font-size="12" fill="#222222">启动所有软件</text>
+  <!-- ============ 顶部工具栏 ============ -->
+  <rect x="0" y="0" width="900" height="58" rx="8" fill="#ffffff"/>
+  <rect x="0" y="50" width="900" height="8" fill="#ffffff"/>
+  <line x1="0" y1="57.5" x2="900" y2="57.5" stroke="#e6e8eb" stroke-width="1"/>
 
-  <!-- 手动区标签 -->
-  <text x="10" y="133" font-size="12" fill="#444444">手动添加（持久保存，不会被抓取覆盖）</text>
-  <rect x="10" y="142" width="580" height="170" rx="3" fill="#ffffff" stroke="#b0b0b0"/>
-  <text x="18" y="168" font-size="12" fill="#333333">WeChat.exe  -  C:\Program Files\Tencent\WeChat\WeChat.exe</text>
-  <text x="18" y="194" font-size="12" fill="#333333">chrome.exe  -  C:\Program Files\Google\Chrome\Application\chrome.exe</text>
-  <text x="18" y="220" font-size="12" fill="#333333">Code.exe  -  C:\Users\...\AppData\Local\Programs\Microsoft VS Code\Code.exe</text>
-  <text x="18" y="246" font-size="12" fill="#333333">Typora.exe  -  C:\Program Files\Typora\Typora.exe</text>
+  <!-- logo -->
+  <rect x="18" y="12" width="34" height="34" rx="9" fill="url(#brand)"/>
+  <text x="35" y="35" text-anchor="middle" font-size="17" fill="#ffffff">⚡</text>
+  <text x="62" y="26" font-size="15" font-weight="600" fill="#1f2328">软件启动器</text>
+  <text x="62" y="42" font-size="11.5" fill="#9aa1ab">手动 4 个 · 抓取 8 个</text>
 
-  <!-- 自动区标签 -->
-  <text x="10" y="343" font-size="12" fill="#444444">自动抓取（当前运行，每次抓取自动刷新；与手动区去重）</text>
-  <rect x="10" y="352" width="580" height="170" rx="3" fill="#ffffff" stroke="#b0b0b0"/>
-  <text x="18" y="378" font-size="12" fill="#333333">QQ.exe  -  C:\Program Files\Tencent\QQ\QQ.exe</text>
-  <text x="18" y="404" font-size="12" fill="#333333">DingTalk.exe  -  C:\Program Files\DingTalk\DingTalk.exe</text>
-  <text x="18" y="430" font-size="12" fill="#333333">Spotify.exe  -  C:\Users\...\AppData\Roaming\Spotify\Spotify.exe</text>
+  <!-- 按钮组 -->
+  <g font-size="12.5">
+    <rect x="300" y="14" width="92" height="30" rx="8" fill="#2563eb"/>
+    <text x="346" y="33" text-anchor="middle" fill="#ffffff">＋ 添加软件</text>
+
+    <rect x="400" y="14" width="80" height="30" rx="8" fill="#ffffff" stroke="#d7dbe0"/>
+    <text x="440" y="33" text-anchor="middle" fill="#1f2328">删除选中</text>
+
+    <rect x="488" y="14" width="80" height="30" rx="8" fill="#ffffff" stroke="#d7dbe0"/>
+    <text x="528" y="33" text-anchor="middle" fill="#1f2328">保存列表</text>
+
+    <line x1="578" y1="18" x2="578" y2="40" stroke="#e6e8eb"/>
+
+    <rect x="590" y="14" width="104" height="30" rx="8" fill="#ffffff" stroke="#d7dbe0"/>
+    <text x="642" y="33" text-anchor="middle" fill="#1f2328">⟳ 抓取运行软件</text>
+
+    <rect x="702" y="14" width="82" height="30" rx="8" fill="#16a34a"/>
+    <text x="743" y="33" text-anchor="middle" fill="#ffffff">启动选中</text>
+
+    <rect x="792" y="14" width="90" height="30" rx="8" fill="#16a34a"/>
+    <text x="837" y="33" text-anchor="middle" fill="#ffffff">启动全部</text>
+  </g>
+
+  <!-- ============ 手动添加面板 ============ -->
+  <rect x="18" y="76" width="864" height="212" rx="12" fill="#ffffff" stroke="#e6e8eb"/>
+  <circle cx="34" cy="100" r="3.5" fill="#2563eb"/>
+  <text x="45" y="104" font-size="13.5" font-weight="600" fill="#1f2328">手动添加</text>
+  <rect x="104" y="91" width="20" height="17" rx="8.5" fill="#eef1f5"/>
+  <text x="114" y="104" text-anchor="middle" font-size="11" font-weight="600" fill="#6b7280">4</text>
+  <text x="790" y="104" font-size="11.5" fill="#9aa1ab">持久保存，不会被抓取覆盖</text>
+
+  <!-- 手动区卡片网格 -->
+  <g>
+    <!-- 卡片 1（选中态） -->
+    <rect x="32" y="118" width="88" height="94" rx="11" fill="#e8f1ff" stroke="#3b82f6" stroke-width="1.5"/>
+    <rect x="53" y="130" width="46" height="46" rx="9" fill="url(#i1)"/>
+    <text x="76" y="160" text-anchor="middle" font-size="19" font-weight="600" fill="#ffffff">微</text>
+    <text x="76" y="192" text-anchor="middle" font-size="11.5" fill="#1f2328">WeChat.exe</text>
+    <text x="76" y="206" text-anchor="middle" font-size="11.5" fill="#1f2328"></text>
+
+    <!-- 卡片 2 -->
+    <rect x="128" y="118" width="88" height="94" rx="11" fill="transparent"/>
+    <rect x="149" y="130" width="46" height="46" rx="9" fill="url(#i2)"/>
+    <text x="172" y="160" text-anchor="middle" font-size="19" font-weight="600" fill="#ffffff">C</text>
+    <text x="172" y="192" text-anchor="middle" font-size="11.5" fill="#1f2328">chrome.exe</text>
+
+    <!-- 卡片 3 -->
+    <rect x="224" y="118" width="88" height="94" rx="11" fill="transparent"/>
+    <rect x="245" y="130" width="46" height="46" rx="9" fill="url(#i3)"/>
+    <text x="268" y="160" text-anchor="middle" font-size="19" font-weight="600" fill="#ffffff">V</text>
+    <text x="268" y="192" text-anchor="middle" font-size="11.5" fill="#1f2328">Code.exe</text>
+
+    <!-- 卡片 4 -->
+    <rect x="320" y="118" width="88" height="94" rx="11" fill="transparent"/>
+    <rect x="341" y="130" width="46" height="46" rx="9" fill="url(#i4)"/>
+    <text x="364" y="160" text-anchor="middle" font-size="19" font-weight="600" fill="#ffffff">T</text>
+    <text x="364" y="192" text-anchor="middle" font-size="11.5" fill="#1f2328">Typora.exe</text>
+  </g>
+
+  <!-- ============ 自动抓取面板 ============ -->
+  <rect x="18" y="300" width="864" height="258" rx="12" fill="#ffffff" stroke="#e6e8eb"/>
+  <circle cx="34" cy="324" r="3.5" fill="#16a34a"/>
+  <text x="45" y="328" font-size="13.5" font-weight="600" fill="#1f2328">自动抓取</text>
+  <rect x="104" y="315" width="20" height="17" rx="8.5" fill="#eef1f5"/>
+  <text x="114" y="328" text-anchor="middle" font-size="11" font-weight="600" fill="#6b7280">8</text>
+  <text x="700" y="328" font-size="11.5" fill="#9aa1ab">当前运行，每次抓取自动刷新并与手动区去重</text>
+
+  <!-- 自动抓取区卡片网格（两行） -->
+  <g>
+    <rect x="32" y="342" width="88" height="94" rx="11" fill="transparent"/>
+    <rect x="53" y="354" width="46" height="46" rx="9" fill="url(#i5)"/>
+    <text x="76" y="384" text-anchor="middle" font-size="19" font-weight="600" fill="#ffffff">Q</text>
+    <text x="76" y="416" text-anchor="middle" font-size="11.5" fill="#1f2328">QQ.exe</text>
+
+    <rect x="128" y="342" width="88" height="94" rx="11" fill="transparent"/>
+    <rect x="149" y="354" width="46" height="46" rx="9" fill="url(#i6)"/>
+    <text x="172" y="384" text-anchor="middle" font-size="19" font-weight="600" fill="#ffffff">钉</text>
+    <text x="172" y="416" text-anchor="middle" font-size="11.5" fill="#1f2328">DingTalk.exe</text>
+
+    <rect x="224" y="342" width="88" height="94" rx="11" fill="transparent"/>
+    <rect x="245" y="354" width="46" height="46" rx="9" fill="url(#i3)"/>
+    <text x="268" y="384" text-anchor="middle" font-size="19" font-weight="600" fill="#ffffff">S</text>
+    <text x="268" y="416" text-anchor="middle" font-size="11.5" fill="#1f2328">Spotify.exe</text>
+
+    <rect x="320" y="342" width="88" height="94" rx="11" fill="transparent"/>
+    <rect x="341" y="354" width="46" height="46" rx="9" fill="url(#i1)"/>
+    <text x="364" y="384" text-anchor="middle" font-size="19" font-weight="600" fill="#ffffff">E</text>
+    <text x="364" y="416" text-anchor="middle" font-size="11.5" fill="#1f2328">msedge.exe</text>
+
+    <rect x="416" y="342" width="88" height="94" rx="11" fill="transparent"/>
+    <rect x="437" y="354" width="46" height="46" rx="9" fill="url(#i2)"/>
+    <text x="460" y="384" text-anchor="middle" font-size="19" font-weight="600" fill="#ffffff">哔</text>
+    <text x="460" y="416" text-anchor="middle" font-size="11.5" fill="#1f2328">哔哩哔哩.exe</text>
+
+    <rect x="512" y="342" width="88" height="94" rx="11" fill="transparent"/>
+    <rect x="533" y="354" width="46" height="46" rx="9" fill="url(#i4)"/>
+    <text x="556" y="384" text-anchor="middle" font-size="19" font-weight="600" fill="#ffffff">W</text>
+    <text x="556" y="416" text-anchor="middle" font-size="11.5" fill="#1f2328">WorkBuddy.exe</text>
+
+    <!-- 第二行 -->
+    <rect x="32" y="444" width="88" height="94" rx="11" fill="transparent"/>
+    <rect x="53" y="456" width="46" height="46" rx="9" fill="url(#i5)"/>
+    <text x="76" y="486" text-anchor="middle" font-size="19" font-weight="600" fill="#ffffff">F</text>
+    <text x="76" y="518" text-anchor="middle" font-size="11.5" fill="#1f2328">FlClashX.exe</text>
+
+    <rect x="128" y="444" width="88" height="94" rx="11" fill="transparent"/>
+    <rect x="149" y="456" width="46" height="46" rx="9" fill="url(#i6)"/>
+    <text x="172" y="486" text-anchor="middle" font-size="19" font-weight="600" fill="#ffffff">S</text>
+    <text x="172" y="518" text-anchor="middle" font-size="11.5" fill="#1f2328">Snipaste.exe</text>
+  </g>
+
+  <!-- ============ 底部状态栏 ============ -->
+  <rect x="0" y="566" width="900" height="34" rx="8" fill="#ffffff"/>
+  <rect x="0" y="566" width="900" height="8" fill="#ffffff"/>
+  <line x1="0" y1="566.5" x2="900" y2="566.5" stroke="#e6e8eb" stroke-width="1"/>
+
+  <!-- 开关 1（开启） -->
+  <rect x="18" y="576" width="32" height="18" rx="9" fill="#2563eb"/>
+  <circle cx="39" cy="585" r="7" fill="#ffffff"/>
+  <text x="56" y="589" font-size="12" fill="#6b7280">开机自启</text>
+
+  <!-- 开关 2（开启） -->
+  <rect x="132" y="576" width="32" height="18" rx="9" fill="#2563eb"/>
+  <circle cx="153" cy="585" r="7" fill="#ffffff"/>
+  <text x="170" y="589" font-size="12" fill="#6b7280">开机后自动恢复</text>
+
+  <text x="882" y="589" text-anchor="end" font-size="11.5" fill="#9aa1ab">已选中：WeChat.exe</text>
 </svg>

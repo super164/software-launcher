@@ -2,19 +2,23 @@
 AppStarter.exe
 *.exe
 *.syso
+build/
 
 # ---- 临时 / 备份 / 快捷方式 ----
 *.bak
+*.walkbak
 *.lnk
 *.old
 *.tmp
 
 # ---- 日志 ----
 log/
+*.log
 
-# ---- 图标资源（真实二进制不入库；.ico 改用 logo.ico.b64 文本，CI 用 certutil 还原）----
+# ---- 图标资源（真实二进制不入库；改用 logo.png.b64 文本，CI 用 base64 -d 还原为 build/appicon.png）----
 *.ico
 assets/logo.png
+assets/logo.ico.b64
 
 # ---- 编辑器 / 系统 ----
 .idea/

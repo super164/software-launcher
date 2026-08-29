@@ -9,16 +9,16 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version tag (e.g. v0.1.0)'
+        description: 'Release version tag (e.g. v0.2.0)'
         required: false
-        default: 'v0.1.0'
+        default: 'v0.2.0'
 
 permissions:
   contents: write
 
 jobs:
   build:
-    name: Build Windows exe
+    name: Build Windows exe (Wails)
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -27,25 +27,26 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.25'
 
-      - name: Install rsrc
+      - name: Install Wails CLI
         shell: bash
-        run: go install github.com/akavel/rsrc@latest
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-      - name: Decode icon (logo.ico.b64 -> logo.ico)
-        shell: pwsh
+      - name: Restore app icon (logo.png.b64 -> build/appicon.png)
+        shell: bash
         run: |
-          if (Test-Path assets/logo.ico.b64) {
-            certutil -decode assets/logo.ico.b64 assets/logo.ico
-            echo "logo.ico restored"
-          } else {
-            echo "no logo.ico.b64, building without custom icon"
-          }
+          mkdir -p build
+          if [ -f assets/logo.png.b64 ]; then
+            base64 -d assets/logo.png.b64 > build/appicon.png
+            echo "appicon.png restored"
+          else
+            echo "no icon found, building with default icon"
+          fi
 
-      - name: Build (manifest + icon + GUI exe)
-        shell: pwsh
-        run: .\build.bat
+      - name: Build with Wails
+        shell: bash
+        run: wails build -platform windows/amd64
 
       - name: Resolve release tag
         id: meta
@@ -65,7 +66,7 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          files: AppStarter.exe
+          files: build/bin/AppStarter.exe
           tag_name: ${{ steps.meta.outputs.tag }}
           name: AppStarter ${{ steps.meta.outputs.tag }}
           prerelease: ${{ steps.meta.outputs.prerelease }}

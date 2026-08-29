@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>软件启动器</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- 顶部工具栏 -->
+    <header class="toolbar">
+      <div class="brand">
+        <div class="brand-logo">⚡</div>
+        <div class="brand-text">
+          <h1>软件启动器</h1>
+          <span id="summary" class="brand-sub">加载中…</span>
+        </div>
+      </div>
+
+      <div class="toolbar-actions">
+        <button class="btn btn-primary" id="btn-add">
+          <span class="btn-ico">＋</span>添加软件
+        </button>
+        <button class="btn" id="btn-remove">删除选中</button>
+        <button class="btn" id="btn-save">保存列表</button>
+        <span class="sep"></span>
+        <button class="btn" id="btn-capture">
+          <span class="btn-ico">⟳</span>抓取运行软件
+        </button>
+        <button class="btn btn-success" id="btn-launch-sel">启动选中</button>
+        <button class="btn btn-success" id="btn-launch-all">启动全部</button>
+      </div>
+    </header>
+
+    <!-- 主体：两个分组 -->
+    <main class="content">
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title">
+            <span class="dot dot-manual"></span>
+            <h2>手动添加</h2>
+            <span class="badge" id="count-manual">0</span>
+          </div>
+          <span class="panel-desc">持久保存，不会被抓取覆盖</span>
+        </div>
+        <div class="grid" id="grid-manual"></div>
+        <div class="empty" id="empty-manual">还没有软件，点「添加软件」或把 exe 拖进窗口</div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title">
+            <span class="dot dot-captured"></span>
+            <h2>自动抓取</h2>
+            <span class="badge" id="count-captured">0</span>
+          </div>
+          <span class="panel-desc">当前运行，每次抓取自动刷新并与手动区去重</span>
+        </div>
+        <div class="grid" id="grid-captured"></div>
+        <div class="empty" id="empty-captured">点「抓取运行软件」记录当前打开的程序</div>
+      </section>
+    </main>
+
+    <!-- 底部状态栏 -->
+    <footer class="statusbar">
+      <label class="switch">
+        <input type="checkbox" id="chk-autostart" />
+        <span class="switch-track"><span class="switch-thumb"></span></span>
+        <span class="switch-label">开机自启</span>
+      </label>
+      <label class="switch">
+        <input type="checkbox" id="chk-autorestore" />
+        <span class="switch-track"><span class="switch-thumb"></span></span>
+        <span class="switch-label">开机后自动恢复</span>
+      </label>
+      <span class="status-spacer"></span>
+      <span class="status-text" id="status">就绪</span>
+    </footer>
+  </div>
+
+  <!-- 轻量提示条 -->
+  <div class="toast" id="toast"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
