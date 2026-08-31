@@ -23,6 +23,27 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
+// debugLog 把诊断信息写到 %APPDATA%/Local/AppStarter/debug.log，
+// 便于排查「配置存在但 UI 显示为空」这类问题。失败时静默忽略。
+// 日志上限 256KB，超出后清空重写，避免长期运行无限增长。
+func debugLog(format string, args ...interface{}) {
+	const maxSize = 256 << 10
+	dir := filepath.Join(os.Getenv("APPDATA"), "Local", "AppStarter")
+	_ = os.MkdirAll(dir, 0755)
+	path := filepath.Join(dir, "debug.log")
+
+	flag := os.O_CREATE | os.O_APPEND | os.O_WRONLY
+	if fi, err := os.Stat(path); err == nil && fi.Size() > maxSize {
+		flag = os.O_CREATE | os.O_TRUNC | os.O_WRONLY
+	}
+	f, err := os.OpenFile(path, flag, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "[%s] %s\n", time.Now().Format("15:04:05.000"), fmt.Sprintf(format, args...))
+}
+
 // AppInfo 前端可见的软件记录：名称 + 路径 + 图标（PNG data URL）。
 type AppInfo struct {
 	Name string `json:"name"`
@@ -126,10 +147,22 @@ func saveConfig(cfg Config) error {
 }
 
 // GetConfig 供前端初始化时拉取全部数据。
-func (a *App) GetConfig() Config {
+// 关键：返回 JSON 字符串而不是 Config struct。
+// 原因：Wails v2 的 method binding 对 struct 返回值走的是它自己的反射路径，
+// 在某些 WebView2 + 复杂嵌套类型（slice of struct）的组合下，字段会被吞掉
+// 表现为「后端有 11 个 app，前端拿到的 manual/captured 是空数组」。
+// 改用 string 走原生 json.Marshal 输出，序列化路径完全可控，避免此坑。
+func (a *App) GetConfig() string {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return a.cfg
+	data, err := json.Marshal(a.cfg)
+	if err != nil {
+		debugLog("GetConfig marshal err: %v", err)
+		return `{"manual":[],"captured":[],"auto_start":false,"auto_restore":false}`
+	}
+	debugLog("GetConfig returns %d bytes: manual=%d captured=%d",
+		len(data), len(a.cfg.Manual), len(a.cfg.Captured))
+	return string(data)
 }
 
 // SaveConfig 手动保存。

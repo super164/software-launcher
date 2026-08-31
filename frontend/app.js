@@ -95,11 +95,22 @@ function renderSelectionOnly() {
 
 async function load() {
   try {
-    config = await GetConfig();
+    // GetConfig 返回的是 JSON 字符串（避免 Wails struct binding 在嵌套 slice 上的字段丢失问题）。
+    const raw = await GetConfig();
+    console.log('[AppStarter] GetConfig raw length:', raw?.length, 'preview:', String(raw).slice(0, 200));
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    config = {
+      manual: Array.isArray(parsed?.manual) ? parsed.manual : [],
+      captured: Array.isArray(parsed?.captured) ? parsed.captured : [],
+      auto_start: !!parsed?.auto_start,
+      auto_restore: !!parsed?.auto_restore,
+    };
+    console.log('[AppStarter] parsed config: manual=%d, captured=%d', config.manual.length, config.captured.length);
     render();
-    els.chkAutoStart.checked = !!config.auto_start;
-    els.chkAutoRestore.checked = !!config.auto_restore;
+    els.chkAutoStart.checked = config.auto_start;
+    els.chkAutoRestore.checked = config.auto_restore;
   } catch (e) {
+    console.error('[AppStarter] load() failed:', e);
     toast('读取配置失败：' + e);
   }
 }
