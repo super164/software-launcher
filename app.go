@@ -23,12 +23,14 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
-// debugLog 把诊断信息写到 %APPDATA%/Local/AppStarter/debug.log，
+// debugLog 把诊断信息写到配置目录下的 debug.log（与 apps.json 同目录），
 // 便于排查「配置存在但 UI 显示为空」这类问题。失败时静默忽略。
 // 日志上限 256KB，超出后清空重写，避免长期运行无限增长。
 func debugLog(format string, args ...interface{}) {
 	const maxSize = 256 << 10
-	dir := filepath.Join(os.Getenv("APPDATA"), "Local", "AppStarter")
+	// 必须和 getConfigPath 同目录：早期用 APPDATA+"Local" 拼接，
+	// 实际落在 AppData\Roaming\Local，和 apps.json 分家，排查时找不到日志。
+	dir := filepath.Dir(getConfigPath())
 	_ = os.MkdirAll(dir, 0755)
 	path := filepath.Join(dir, "debug.log")
 
@@ -41,7 +43,7 @@ func debugLog(format string, args ...interface{}) {
 		return
 	}
 	defer f.Close()
-	fmt.Fprintf(f, "[%s] %s\n", time.Now().Format("15:04:05.000"), fmt.Sprintf(format, args...))
+	fmt.Fprintf(f, "[%s] %s\n", time.Now().Format("2006-01-02 15:04:05.000"), fmt.Sprintf(format, args...))
 }
 
 // AppInfo 前端可见的软件记录：名称 + 路径 + 图标（PNG data URL）。
@@ -67,14 +69,22 @@ type App struct {
 }
 
 func NewApp() *App {
-	return &App{}
+	// 在 wails.Run 之前就把配置加载进内存，确保前端首次 GetConfig 时数据已就绪，
+	// 彻底规避「前端先调用、OnStartup 后加载」导致的 UI 显示为空。
+	return &App{cfg: loadConfig()}
 }
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	a.cfg = loadConfig()
+	debugLog("startup: loaded manual=%d captured=%d auto_start=%v auto_restore=%v",
+		len(a.cfg.Manual), len(a.cfg.Captured), a.cfg.AutoStart, a.cfg.AutoRestore)
 	syncAutoStart(a.cfg.AutoStart)
-	if a.cfg.AutoRestore {
+	// 「开机后自动恢复」：每次 Windows 启动只恢复一次。判定方式是比对
+	// 「上次恢复的时间戳」与「本次系统开机时刻」——上次恢复早于本次开机，
+	// 说明本次开机还没恢复过，触发一次；晚于则是用户在同一次开机里手动
+	// 重新打开了启动器，跳过，避免已经开着的软件被再启动一遍。
+	if a.cfg.AutoRestore && shouldAutoRestore() {
+		markRestored()
 		go func() {
 			time.Sleep(8 * time.Second)
 			a.LaunchAll()
@@ -92,22 +102,58 @@ func (a *App) shutdown(ctx context.Context) {
 // ============ 配置读写 ============
 
 func getConfigPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		home = "."
+	// 优先用 Windows 的 LOCALAPPDATA 环境变量，比 UserHomeDir()+"AppData\\Local"
+	// 更可靠；某些开机启动场景下 USERPROFILE 可能还没就绪，但 LOCALAPPDATA 通常已设置。
+	dir := os.Getenv("LOCALAPPDATA")
+	if dir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			home = "."
+		}
+		dir = filepath.Join(home, "AppData", "Local")
 	}
-	return filepath.Join(home, "AppData", "Local", "AppStarter", "apps.json")
+	return filepath.Join(dir, "AppStarter", "apps.json")
 }
 
 func loadConfig() Config {
-	data, err := os.ReadFile(getConfigPath())
-	if err != nil {
-		return Config{}
+	path := getConfigPath()
+
+	// 增加读取重试，规避开机时偶尔出现的文件锁定/共享冲突。
+	var data []byte
+	var err error
+	for i := 0; i < 3; i++ {
+		data, err = os.ReadFile(path)
+		if err == nil {
+			break
+		}
+		debugLog("loadConfig attempt %d read %s err: %v", i+1, path, err)
+		if i < 2 {
+			time.Sleep(200 * time.Millisecond)
+		}
 	}
+	if err != nil {
+		debugLog("loadConfig: failed to read %s after retries: %v", path, err)
+		return Config{Manual: []AppInfo{}, Captured: []AppInfo{}}
+	}
+	if len(data) == 0 {
+		debugLog("loadConfig: %s is empty, starting fresh", path)
+		return Config{Manual: []AppInfo{}, Captured: []AppInfo{}}
+	}
+
 	var cfg Config
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return Config{}
+		debugLog("loadConfig: unmarshal err: %v (data len=%d)", err, len(data))
+		return Config{Manual: []AppInfo{}, Captured: []AppInfo{}}
 	}
+
+	// 空配置反序列化后 slice 可能是 nil，JSON 会输出 null，统一成空数组避免前端误判。
+	if cfg.Manual == nil {
+		cfg.Manual = []AppInfo{}
+	}
+	if cfg.Captured == nil {
+		cfg.Captured = []AppInfo{}
+	}
+
 	// 图标是运行时产物，重新提取（配置里可能是空的）。
 	for i := range cfg.Manual {
 		cfg.Manual[i].Icon = extractIconDataURL(cfg.Manual[i].Path)
@@ -117,6 +163,8 @@ func loadConfig() Config {
 			cfg.Captured[i].Icon = extractIconDataURL(cfg.Captured[i].Path)
 		}
 	}
+
+	debugLog("loadConfig: ok manual=%d captured=%d path=%s", len(cfg.Manual), len(cfg.Captured), path)
 	return cfg
 }
 
@@ -139,11 +187,23 @@ func saveConfig(cfg Config) error {
 		AutoStart:   cfg.AutoStart,
 		AutoRestore: cfg.AutoRestore,
 	}
+	if persist.Manual == nil {
+		persist.Manual = []AppInfo{}
+	}
+	if persist.Captured == nil {
+		persist.Captured = []AppInfo{}
+	}
 	data, err := json.MarshalIndent(persist, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(getConfigPath(), data, 0644)
+	// 先写临时文件再 rename，避免写入过程中崩溃导致 apps.json 被截断成空文件。
+	path := getConfigPath()
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
 }
 
 // GetConfig 供前端初始化时拉取全部数据。
@@ -155,6 +215,12 @@ func saveConfig(cfg Config) error {
 func (a *App) GetConfig() string {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if a.cfg.Manual == nil {
+		a.cfg.Manual = []AppInfo{}
+	}
+	if a.cfg.Captured == nil {
+		a.cfg.Captured = []AppInfo{}
+	}
 	data, err := json.Marshal(a.cfg)
 	if err != nil {
 		debugLog("GetConfig marshal err: %v", err)
@@ -365,6 +431,8 @@ func launch(item AppInfo) error {
 }
 
 // LaunchAll 按序错峰启动两个区域的全部软件，返回汇总结果。
+// 启动前先取一次进程快照，已经在运行的 exe basename 直接跳过，避免对已在工作的
+// 软件「再开一份」（典型场景：boot 时自动恢复把工具拉起，用户随后又主动启动 AppStarter）。
 func (a *App) LaunchAll() string {
 	a.mu.Lock()
 	all := append(append([]AppInfo{}, a.cfg.Manual...), a.cfg.Captured...)
@@ -373,18 +441,31 @@ func (a *App) LaunchAll() string {
 	if len(all) == 0 {
 		return "列表为空，没有可启动的软件"
 	}
+	running := runningExeBaseNames()
 	go func() {
+		var skipped []string
 		var failed []string
+		success := 0
 		for i, item := range all {
+			base := strings.ToLower(filepath.Base(item.Path))
+			if running[base] {
+				skipped = append(skipped, item.Name)
+				continue
+			}
 			if err := launch(item); err != nil {
 				failed = append(failed, fmt.Sprintf("%s: %v", item.Name, err))
+			} else {
+				success++
+				running[base] = true // 同批次里后面再出现就跳过
 			}
 			if i < len(all)-1 {
 				time.Sleep(time.Second)
 			}
 		}
-		success := len(all) - len(failed)
 		msg := fmt.Sprintf("已启动 %d 个软件", success)
+		if len(skipped) > 0 {
+			msg += fmt.Sprintf("，跳过 %d 个已在运行: %s", len(skipped), strings.Join(skipped, "、"))
+		}
 		if len(failed) > 0 {
 			msg += fmt.Sprintf("，%d 个失败：\n%s", len(failed), strings.Join(failed, "\n"))
 		}
@@ -394,6 +475,27 @@ func (a *App) LaunchAll() string {
 		}
 	}()
 	return fmt.Sprintf("正在启动 %d 个软件…", len(all))
+}
+
+// runningExeBaseNames 通过 PowerShell 拉一次所有有路径的进程，按 basename 去重返回。
+// 出错时返回 nil，让 LaunchAll 跳过去重逻辑（保持原有「能启动就启动」行为，避免误伤）。
+func runningExeBaseNames() map[string]bool {
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command",
+		"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; "+
+			"Get-Process | Where-Object { $_.Path } | ForEach-Object { [System.IO.Path]::GetFileName($_.Path) } | Sort-Object -Unique")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	out, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+	set := make(map[string]bool)
+	for _, line := range strings.Split(string(out), "\n") {
+		name := strings.ToLower(strings.TrimSpace(line))
+		if name != "" {
+			set[name] = true
+		}
+	}
+	return set
 }
 
 // ============ 抓取运行中的软件 ============
@@ -516,6 +618,11 @@ func (a *App) SetAutoRestore(enabled bool) error {
 	a.cfg.AutoRestore = enabled
 	_ = saveConfig(a.cfg)
 	a.mu.Unlock()
+	if !enabled {
+		// 关掉开关时清掉恢复记录，用户下次重新勾上时能立即生效一次，
+		// 不必等下一次开机。
+		clearLastRestore()
+	}
 	return nil
 }
 
@@ -547,4 +654,79 @@ func syncAutoStart(enabled bool) {
 		return
 	}
 	_ = k.SetStringValue(runValue, `"`+exe+`"`)
+}
+
+// ============ 开机后自动恢复（按系统启动时间判定）============
+//
+// 设计动机：旧版里「开机后自动恢复」开关只要勾上，每次 AppStarter 启动都会延迟 8s
+// 把全部软件启动一遍——用户关闭启动器后再手动打开，已经被启动一遍的软件又被启动一次。
+//
+// 难点：程序无法区分「Windows 开机登录时拉起」和「用户手动点开」（父进程都是
+// explorer.exe）。所以改用时间戳比对：记录上次自动恢复的时刻，与本次系统开机
+// 时刻比较——
+//   上次恢复早于本次开机 → 本次开机后还没恢复过 → 触发一次
+//   上次恢复晚于本次开机 → 本次开机已经恢复过了 → 跳过（用户手动重开的场景）
+//   从未恢复过（新装 / 升级上来的老配置）→ 触发一次
+// 失败时保守跳过：宁可不恢复，也不要重复启动。
+
+const lastRestoreFlag = ".last_restore"
+
+func lastRestorePath() string {
+	return filepath.Join(filepath.Dir(getConfigPath()), lastRestoreFlag)
+}
+
+// systemBootTime 通过 GetTickCount64（系统启动后经过的毫秒数）反推开机时刻。
+// 直接用 syscall 调 kernel32，避免为此引入新依赖。
+func systemBootTime() time.Time {
+	proc := syscall.NewLazyDLL("kernel32.dll").NewProc("GetTickCount64")
+	ms, _, _ := proc.Call()
+	if ms == 0 { // GetTickCount64 只有开机后第 1ms 内才可能为 0，等同于取不到
+		return time.Time{}
+	}
+	return time.Now().Add(-time.Duration(ms) * time.Millisecond)
+}
+
+// readLastRestore 读上次自动恢复的时间戳；文件不存在或内容损坏时返回零值。
+func readLastRestore() time.Time {
+	data, err := os.ReadFile(lastRestorePath())
+	if err != nil {
+		return time.Time{}
+	}
+	t, err := time.Parse(time.RFC3339, strings.TrimSpace(string(data)))
+	if err != nil {
+		return time.Time{}
+	}
+	return t
+}
+
+// markRestored 记录本次自动恢复的时刻。
+func markRestored() {
+	if err := os.WriteFile(lastRestorePath(), []byte(time.Now().Format(time.RFC3339)), 0644); err != nil {
+		debugLog("markRestored 写失败: %v", err)
+	}
+}
+
+// clearLastRestore 清掉恢复记录（用户关闭「开机后自动恢复」开关时调用）。
+func clearLastRestore() {
+	if err := os.Remove(lastRestorePath()); err != nil && !os.IsNotExist(err) {
+		debugLog("clearLastRestore 删失败: %v", err)
+	}
+}
+
+// shouldAutoRestore 判断本次启动是否需要触发自动恢复。
+func shouldAutoRestore() bool {
+	boot := systemBootTime()
+	if boot.IsZero() {
+		debugLog("shouldAutoRestore: 取不到系统开机时刻，跳过自动恢复")
+		return false
+	}
+	last := readLastRestore()
+	if last.IsZero() {
+		debugLog("shouldAutoRestore: 无恢复记录（boot=%s）→ 触发", boot.Format(time.RFC3339))
+		return true
+	}
+	need := last.Before(boot)
+	debugLog("shouldAutoRestore: boot=%s last=%s → %v",
+		boot.Format(time.RFC3339), last.Format(time.RFC3339), need)
+	return need
 }
